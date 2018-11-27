@@ -27,13 +27,13 @@ function newLogger()
     return setmetatable(Logger, loggerMetatable)
 end
 
-function newEntry (opts)
+function newEntry (logger, opts)
     local opts = opts or {}
     local debugInfo = debug.getinfo(opts.n or 3, "Sl")
 
     local indexTable = {
             Fields  = opts.Fields or {},
-            Time    = opts.Time or os.date("%H:%M:%S"),
+            Time    = opts.Time or os.date(logger.dateFormat),
             Level   = opts.Level or Levels.NoLevel,
             Msg     = opts.Msg or "",
             LineInf = opts.LineInf or debugInfo.short_src .. ":" .. debugInfo.currentline,
@@ -57,7 +57,7 @@ function newEntry (opts)
     })
 end
 
-function print(logger, entry)
+function print(entry)
     std_print(("%s[%-6s%s]%s %s: %s"):format(
         "",
         entry.Level,
@@ -72,14 +72,14 @@ local msgFuncs = {}
 for name, level in next, Levels do
     if level ~= Levels.NoLevel then
         msgFuncs[name] = function(logger, msg)
-            print(logger, newEntry({
+            print(newEntry(logger, {
                 Msg = msg,
                 Level = level,
             }))
         end
 
         msgFuncs[name..'f'] = function(logger, msg, ...)
-            print(logger, newEntry({
+            print(newEntry(logger, {
                 Msg = msg:format(unpack({...})),
                 Level = level,
             }))
@@ -96,6 +96,8 @@ loggerMetatable = {
         WarnLevel  = Levels.Warn,
         ErrorLevel = Levels.Error,
         FatalLevel = Levels.Fatal,
+
+        dateFormat = "%H:%M:%S",
 
         new     = newLogger,
         
