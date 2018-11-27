@@ -1,38 +1,46 @@
+local std_print = print
+
 -- Forward declarations
-local newEntry
-local logMetatable
+local newEntry, newLogger, print, printf
+local loggerMetatable
 
 local function Level (s)
     return setmetatable({LEVEL = true}, {__tostring = function() return s end})
 end
 
 ---------- Log Levels ----------
-local NoLevel    = Level('no_level') -- Not meant to be used.
-local TraceLevel = Level('trace')
-local DebugLevel = Level('debug')
-local InfoLevel  = Level('info')
-local WarnLevel  = Level('warn')
-local ErrorLevel = Level('error')
-local FatalLevel = Level('fatal')
+local Levels = {
+    NoLevel = Level('NO_LEVEL'), -- Not meant to be used.
+    Trace   = Level('TRACE'),
+    Debug   = Level('DEBUG'),
+    Info    = Level('INFO'),
+    Warn    = Level('WARN'),
+    Error   = Level('ERROR'),
+    Fatal   = Level('FATAL'),
+}
 --------------------------------
 
 local Entry  = {"ENTRY"}
 local Logger = {"LOGGER"}
 
-function newEntry (logger)
-    local debugInfo = debug.getinfo(2, "Sl")
+function newLogger()
+    return setmetatable(Logger, loggerMetatable)
+end
+
+function newEntry (opts)
+    local opts = opts or {}
+    local debugInfo = debug.getinfo(opts.n or 3, "Sl")
 
     local indexTable = {
-            Logger  = logger,
-            Fields  = {},
-            Time    = os.date("%H:%M:%S"),
-            Level   = NoLevel,
-            Msg     = "",
-            LineInf = debugInfo.short_src .. ":" .. debugInfo.currentline,
+            Fields  = opts.Fields or {},
+            Time    = opts.Time or os.date("%H:%M:%S"),
+            Level   = opts.Level or Levels.NoLevel,
+            Msg     = opts.Msg or "",
+            LineInf = opts.LineInf or debugInfo.short_src .. ":" .. debugInfo.currentline,
 
             print   = function(self, msg)
                 self.Msg = msg
-                self.Level = InfoLevel
+                self.Level = Levels.Info
                 print(("%s[%-6s%s]%s %s: %s"):format(
                     "",
                     self.Level,
@@ -48,9 +56,9 @@ function newEntry (logger)
         __index = indexTable,
         __newindex = function(entry, key, value)
             if key == 'Level' then
-                local value = value or NoLevel
+                local value = value or Levels.NoLevel
                 assert(value.LEVEL, 'Unexpected value for level')
-                assert(value ~= NoLevel, 'Cannot set level to nil')
+                assert(value ~= Levels.NoLevel, 'Cannot set level to nil')
 
                 indexTable.Level = value
             elseif key == 'Msg' then
@@ -62,17 +70,64 @@ function newEntry (logger)
     })
 end
 
-logMetatable = {
-    __index = {
-        TraceLevel = TraceLevel,
-        DebugLevel = DebugLevel,
-        InfoLevel  = InfoLevel,
-        WarnLevel  = WarnLevel,
-        ErrorLevel = ErrorLevel,
-        FatalLevel = FatalLevel,
+function print(logger, entry)
+    std_print(("%s[%-6s%s]%s %s: %s"):format(
+        "",
+        entry.Level,
+        entry.Time,
+        "",
+        entry.LineInf,
+        entry.Msg
+    ))
+end
 
-        newEntry = newEntry,
+local msgFuncs = {}
+for name, level in next, Levels do
+    if level ~= Levels.NoLevel then
+        msgFuncs[name] = function(logger, msg)
+            print(logger, newEntry({
+                Msg = msg,
+                Level = level,
+            }))
+        end
+
+        msgFuncs[name..'f'] = function(logger, msg, ...)
+            print(logger, newEntry({
+                Msg = msg:format(unpack({...})),
+                Level = level,
+            }))
+        end
+    end
+end
+
+-- This table is manually written to make the API clear.
+loggerMetatable = {
+    __index = {
+        TraceLevel = Levels.Trace,
+        DebugLevel = Levels.Debug,
+        InfoLevel  = Levels.Info,
+        WarnLevel  = Levels.Warn,
+        ErrorLevel = Levels.Error,
+        FatalLevel = Levels.Fatal,
+
+        new     = newLogger,
+        
+        Trace   = msgFuncs.Trace,
+        Debug   = msgFuncs.Debug,
+        Info    = msgFuncs.Info,
+        Warn    = msgFuncs.Warn,
+        Warning = msgFuncs.Warning,
+        Error   = msgFuncs.Error,
+        Fatal   = msgFuncs.Fatal,
+
+        Tracef  = msgFuncs.Tracef,
+        Debugf  = msgFuncs.Debugf,
+        Infof   = msgFuncs.Infof,
+        Warnf   = msgFuncs.Warnf,
+        Warningf= msgFuncs.Warnf,
+        Errorf  = msgFuncs.Errorf,
+        Fatalf  = msgFuncs.Fatalf,
     },
 }
 
-return setmetatable({}, logMetatable)
+return newLogger()
