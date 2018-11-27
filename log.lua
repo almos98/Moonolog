@@ -1,8 +1,8 @@
 local std_print = print
 
 -- Forward declarations
-local newEntry, newLogger, print, printf
-local loggerMetatable
+local newEntry, newLogger, print
+local defaultLogger, loggerMetatable
 
 local function Level (s)
     return setmetatable({LEVEL = true}, {__tostring = function() return s end})
@@ -72,6 +72,12 @@ local msgFuncs = {}
 for name, level in next, Levels do
     if level ~= Levels.NoLevel then
         msgFuncs[name] = function(logger, msg)
+            local msg = msg
+            if type(logger) == 'string' and msg == nil then
+                msg = logger
+                logger = defaultLogger
+            end
+
             print(newEntry(logger, {
                 Msg = msg,
                 Level = level,
@@ -79,6 +85,12 @@ for name, level in next, Levels do
         end
 
         msgFuncs[name..'f'] = function(logger, msg, ...)
+            local msg = msg
+            if type(logger) == 'string' and msg == nil then
+                msg = logger
+                logger = defaultLogger
+            end
+            
             print(newEntry(logger, {
                 Msg = msg:format(unpack({...})),
                 Level = level,
@@ -119,4 +131,5 @@ loggerMetatable = {
     },
 }
 
-return newLogger()
+defaultLogger = newLogger()
+return defaultLogger
