@@ -37,19 +37,6 @@ function newEntry (opts)
             Level   = opts.Level or Levels.NoLevel,
             Msg     = opts.Msg or "",
             LineInf = opts.LineInf or debugInfo.short_src .. ":" .. debugInfo.currentline,
-
-            print   = function(self, msg)
-                self.Msg = msg
-                self.Level = Levels.Info
-                print(("%s[%-6s%s]%s %s: %s"):format(
-                    "",
-                    self.Level,
-                    self.Time,
-                    "",
-                    self.LineInf,
-                    self.Msg
-                ))
-            end,
     }
 
     return setmetatable(Entry, {
