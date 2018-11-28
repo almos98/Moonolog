@@ -1,8 +1,10 @@
+-- Standard Library Functions
 local std_print = print
+local debugInfo = debug.getinfo
 
 -- Forward declarations
-local newEntry, newLogger, print
-local defaultLogger, loggerMetatable
+local newEntry, newLogger, print, setFormatter
+local defaultLogger, loggerMetatable, formatters, loggerToFormatter
 
 local function Level (s)
     return setmetatable({LEVEL = true}, {__tostring = function() return s end})
@@ -10,7 +12,7 @@ end
 
 ---------- Log Levels ----------
 local Levels = {
-    NoLevel = Level('NO_LEVEL'), -- Not meant to be used.
+    NoLevel = Level('NO_LEVEL'),
     Trace   = Level('TRACE'),
     Debug   = Level('DEBUG'),
     Info    = Level('INFO'),
@@ -19,54 +21,6 @@ local Levels = {
     Fatal   = Level('FATAL'),
 }
 --------------------------------
-
-local Entry  = {"ENTRY"}
-local Logger = {"LOGGER"}
-
-function newLogger()
-    return setmetatable(Logger, loggerMetatable)
-end
-
-function newEntry (logger, opts)
-    local opts = opts or {}
-    local debugInfo = debug.getinfo(opts.n or 3, "Sl")
-
-    local indexTable = {
-            Fields  = opts.Fields or {},
-            Time    = opts.Time or os.date(logger.dateFormat),
-            Level   = opts.Level or Levels.NoLevel,
-            Msg     = opts.Msg or "",
-            LineInf = opts.LineInf or debugInfo.short_src .. ":" .. debugInfo.currentline,
-    }
-
-    return setmetatable(Entry, {
-        __index = indexTable,
-        __newindex = function(entry, key, value)
-            if key == 'Level' then
-                local value = value or Levels.NoLevel
-                assert(value.LEVEL, 'Unexpected value for level')
-                assert(value ~= Levels.NoLevel, 'Cannot set level to nil')
-
-                indexTable.Level = value
-            elseif key == 'Msg' then
-                assert(type(value) == 'string', 'Expected a string.')
-
-                indexTable.Msg = value
-            end
-        end,
-    })
-end
-
-function print(entry)
-    std_print(("%s[%-6s%s]%s %s: %s"):format(
-        "",
-        entry.Level,
-        entry.Time,
-        "",
-        entry.LineInf,
-        entry.Msg
-    ))
-end
 
 local msgFuncs = {}
 for name, level in next, Levels do
@@ -99,6 +53,77 @@ for name, level in next, Levels do
     end
 end
 
+
+-- Custom 'types'
+local Entry  = {"ENTRY"}
+local Logger = {"LOGGER"}
+
+function newLogger(formatter)
+    local formatter = formatter or formatters.text
+    local logger = setmetatable(Logger, loggerMetatable)
+    setFormatter(logger, formatter)
+
+    return logger
+end
+
+function newEntry (logger, opts)
+    local opts = opts or {}
+    local info = debugInfo(3, "Sl")
+
+    local indexTable = {
+            Logger  = logger,
+            Fields  = opts.Fields or {},
+            Time    = opts.Time or os.date(logger.dateFormat),
+            Level   = opts.Level or Levels.NoLevel,
+            Msg     = opts.Msg or "",
+            LineInf = opts.LineInf or info.short_src .. ":" .. info.currentline,
+    }
+
+    return setmetatable(Entry, {
+        __index = indexTable,
+        __newindex = function(entry, key, value)
+            if key == 'Level' then
+                local value = value or Levels.NoLevel
+                assert(value.LEVEL, 'Unexpected value for level')
+                assert(value ~= Levels.NoLevel, 'Cannot set level to nil')
+
+                indexTable.Level = value
+            elseif key == 'Msg' then
+                assert(type(value) == 'string', 'Expected a string.')
+
+                indexTable.Msg = value
+            end
+        end,
+    })
+end
+
+function print(entry)
+    std_print(loggerToFormatter[entry.Logger](entry))
+end
+
+loggerToFormatter = {}
+function setFormatter(logger, f)
+    if type(f) == 'function' then
+        loggerToFormatter[logger] = f
+    elseif type(f) == 'string' then
+        f = formatters[f:lower()]
+        if f == nil then return end
+        loggerToFormatter[logger] = f
+    end
+end
+
+formatters = {}
+function formatters.text(entry)
+    return ("%s[%-6s%s]%s %s: %s"):format(
+        "",
+        entry.Level,
+        entry.Time,
+        "",
+        entry.LineInf,
+        entry.Msg
+    )
+end
+
 -- This table is manually written to make the API clear.
 loggerMetatable = {
     __index = {
@@ -129,6 +154,12 @@ loggerMetatable = {
         Errorf  = msgFuncs.Errorf,
         Fatalf  = msgFuncs.Fatalf,
     },
+
+    __newindex = function(logger, key, value)
+        if key == 'format' then
+            setFormatter(logger, value)
+        end
+    end,
 }
 
 defaultLogger = newLogger()
