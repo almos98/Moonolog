@@ -1,5 +1,6 @@
 # Moonolog
 My solution to logging in Lua, inspired by [Logrus](https://github.com/sirupsen/logrus).
+
 I do not plan to implement Logrus or all of its features in Lua, but rather a similar API.
 
 ![Colored](https://i.imgur.com/lBkE4Vn.png)
