@@ -14,3 +14,5 @@ log.Error("an error")
 log.Fatal("a fatal error")
 
 log:Tracef("this is a %sing test", "laugh")
+log.colors = false
+log.Trace("colorless")

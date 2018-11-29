@@ -6,6 +6,7 @@ local debugInfo = debug.getinfo
 local newEntry, newLogger, print, setFormatter
 local defaultLogger, loggerMetatable, formatters, loggerToFormatter
 
+
 local function Level (s)
     return setmetatable({LEVEL = true}, {__tostring = function() return s end})
 end
@@ -124,10 +125,10 @@ end
 formatters = {}
 function formatters.text(entry)
     return ("%s[%-6s%s]%s %s: %s"):format(
-        Colors[entry.Level],
+        entry.Logger.colors and Colors[entry.Level] or "",
         entry.Level,
         entry.Time,
-        Colors[Levels.NoLevel],
+        entry.Logger.colors and Colors[Levels.NoLevel] or "",
         entry.LineInf,
         entry.Msg
     )
@@ -144,6 +145,8 @@ loggerMetatable = {
         FatalLevel = Levels.Fatal,
 
         dateFormat = "%H:%M:%S",
+
+        colors  = true,
 
         new     = newLogger,
         
@@ -167,6 +170,10 @@ loggerMetatable = {
     __newindex = function(logger, key, value)
         if key == 'format' then
             setFormatter(logger, value)
+        elseif key == 'colors' then
+            if type(value) == 'boolean' then
+                getmetatable(logger).__index.colors = value
+            end
         end
     end,
 }
