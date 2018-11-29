@@ -4,7 +4,7 @@ local debugInfo = debug.getinfo
 
 -- Forward declarations
 local newEntry, newLogger, print, setFormatter
-local defaultLogger, loggerMetatable, formatters, loggerToFormatter
+local defaultLogger, loggerMetatable, formatters
 
 
 local function Level (s)
@@ -68,12 +68,8 @@ end
 local Entry  = {"ENTRY"}
 local Logger = {"LOGGER"}
 
-function newLogger(formatter)
-    local formatter = formatter or formatters.text
-    local logger = setmetatable(Logger, loggerMetatable)
-    setFormatter(logger, formatter)
-
-    return logger
+function newLogger()
+    return setmetatable(Logger, loggerMetatable)
 end
 
 function newEntry (logger, opts)
@@ -108,18 +104,7 @@ function newEntry (logger, opts)
 end
 
 function print(entry)
-    std_print(loggerToFormatter[entry.Logger](entry))
-end
-
-loggerToFormatter = {}
-function setFormatter(logger, f)
-    if type(f) == 'function' then
-        loggerToFormatter[logger] = f
-    elseif type(f) == 'string' then
-        f = formatters[f:lower()]
-        if f == nil then return end
-        loggerToFormatter[logger] = f
-    end
+    std_print(entry.Logger.formatter(entry))
 end
 
 formatters = {}
@@ -134,6 +119,10 @@ function formatters.text(entry)
     )
 end
 
+local function set(t, k, v)
+    getmetatable(t).__index[k] = v
+end
+
 -- This table is manually written to make the API clear.
 loggerMetatable = {
     __index = {
@@ -145,7 +134,7 @@ loggerMetatable = {
         FatalLevel = Levels.Fatal,
 
         dateFormat = "%H:%M:%S",
-
+        formatter = formatters.text,
         colors  = true,
 
         new     = newLogger,
@@ -168,11 +157,17 @@ loggerMetatable = {
     },
 
     __newindex = function(logger, key, value)
-        if key == 'format' then
-            setFormatter(logger, value)
+        if key == 'formatter' then
+            if type(value) == 'string' then
+                value = formatters[value:lower()]
+            end
+
+            if type(value) == 'function' then
+                set(logger, key. value)
+            end
         elseif key == 'colors' then
             if type(value) == 'boolean' then
-                getmetatable(logger).__index.colors = value
+                set(logger, key, value)
             end
         end
     end,
