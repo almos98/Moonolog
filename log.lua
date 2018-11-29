@@ -22,6 +22,15 @@ local Levels = {
 }
 --------------------------------
 
+local Colors = {}
+Colors[Levels.NoLevel] = '\27[0m'
+Colors[Levels.Trace]   = '\27[0;34m'
+Colors[Levels.Debug]   = '\27[0;36m'
+Colors[Levels.Info]    = '\27[0;92m'
+Colors[Levels.Warn]    = '\27[0;33m'
+Colors[Levels.Error]   = '\27[0;91m'
+Colors[Levels.Fatal]   = '\27[0;31m'
+
 local msgFuncs = {}
 for name, level in next, Levels do
     if level ~= Levels.NoLevel then
@@ -115,10 +124,10 @@ end
 formatters = {}
 function formatters.text(entry)
     return ("%s[%-6s%s]%s %s: %s"):format(
-        "",
+        Colors[entry.Level],
         entry.Level,
         entry.Time,
-        "",
+        Colors[Levels.NoLevel],
         entry.LineInf,
         entry.Msg
     )
