@@ -34,13 +34,16 @@ Colors[Levels.Fatal]   = '\27[0;31m'
 
 local msgFuncs = {}
 for name, level in next, Levels do
+    local function argumentSwap(logger, msg)
+        if type(logger) == 'string' and msg == nil then
+            return defaultLogger, msg
+        end
+        return logger, msg
+    end
+
     if level ~= Levels.NoLevel then
         msgFuncs[name] = function(logger, msg)
-            local msg = msg
-            if type(logger) == 'string' and msg == nil then
-                msg = logger
-                logger = defaultLogger
-            end
+            local logger, msg = argumentSwap(logger,msg)
 
             print(newEntry(logger, {
                 Msg = msg,
@@ -49,12 +52,8 @@ for name, level in next, Levels do
         end
 
         msgFuncs[name..'f'] = function(logger, msg, ...)
-            local msg = msg
-            if type(logger) == 'string' and msg == nil then
-                msg = logger
-                logger = defaultLogger
-            end
-            
+            local logger, msg = argumentSwap(logger,msg)
+
             print(newEntry(logger, {
                 Msg = msg:format(unpack({...})),
                 Level = level,
