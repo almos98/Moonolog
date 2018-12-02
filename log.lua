@@ -36,7 +36,7 @@ local msgFuncs = {}
 for name, level in next, Levels do
     local function argumentSwap(logger, msg)
         if type(logger) == 'string' and msg == nil then
-            return defaultLogger, msg
+            return defaultLogger, logger
         end
         return logger, msg
     end
