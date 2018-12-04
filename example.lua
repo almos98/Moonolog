@@ -13,6 +13,8 @@ log.colors = false
 log.Trace("colorless")
 
 log.colors = true
-log:withFields({test="test", example=123}):Fatal("test")
+e = log:withFields({test="test", example=123})
 
-log:withFields({test="test", example=123}):Debug("test12312312")
+e:Fatal("test")
+e:Debug("test123")
+

@@ -118,27 +118,47 @@ function print(entry)
     std_print(entry.Logger.formatter(entry))
 end
 
+local function getTerminalColumns(offset)
+    subtract = subtract or 0
+    local handle = io.popen("tput cols")
+    local result = handle:read("*a")
+    
+    handle:close()
+    return math.min(tonumber(result) - offset, 99)
+end
+
 formatters = {}
-function formatters.text(entry)
-    local fieldsString = ""
-    for key, value in next, entry.Fields do
-        fieldsString = fieldsString .. string.format("%s%s%s=%s ",
-            entry.Logger.colors and Colors[entry.Level] or "",
-            key,
-            entry.Logger.colors and Colors[Levels.NoLevel] or "",
-            tostring(value)
-        )
+function formatters.text(entry) 
+    local levelColor = Colors[entry.Level]
+    local noColor = Colors[Levels.NoLevel]
+    local colorCount = 1
+
+    local footer = ""
+    if entry.Fields ~= {} then
+        std_print("Field evaluating")
+        for key, value in next, entry.Fields do
+            footer = footer .. ("%s%s%s=%s "):format(
+                entry.Logger.colors and levelColor or "",
+                key,
+                entry.Logger.colors and noColor or "",
+                tostring(value)
+            )
+            colorCount = colorCount + 1
+        end
     end
 
-    return ("%s[%-6s%s]%s %s: %-44s %s"):format(
-        entry.Logger.colors and Colors[entry.Level] or "",
+    local header = ("%s[%-6s%s]%s %s:"):format(
+        entry.Logger.colors and levelColor or "",
         entry.Level,
         entry.Time,
-        entry.Logger.colors and Colors[Levels.NoLevel] or "",
-        entry.LineInf,
-        entry.Msg,
-        fieldsString
+        entry.Logger.colors and noColor or "",
+        entry.LineInf
     )
+
+    local offset = entry.Logger.colors and (#levelColor + #noColor) * colorCount or 0
+    offset = offset + #header
+    local body = ("%%-%ds"):format(getTerminalColumns(offset)):format(entry.Msg)
+    return ("%s %s %s"):format(header, body, footer)
 end
 
 local function set(t, k, v)
