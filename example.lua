@@ -11,3 +11,6 @@ log:Tracef("this is a %sing test", "laugh")
 
 log.colors = false
 log.Trace("colorless")
+
+log.colors = true
+log:withFields({test="test", example=123}):Fatal("test")

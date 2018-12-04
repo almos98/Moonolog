@@ -3,9 +3,12 @@ local std_print = print
 local debugInfo = debug.getinfo
 
 -- Forward declarations
-local newEntry, newLogger, print, setFormatter
+local newEntry, newLogger, print, setFormatter, withFields
 local defaultLogger, loggerMetatable, formatters
 
+-- Custom 'types'
+local Entry  = {"ENTRY"}
+local Logger = {"LOGGER"}
 
 local function Level (s)
     return setmetatable({LEVEL = true}, {__tostring = function() return s end})
@@ -34,25 +37,27 @@ Colors[Levels.Fatal]   = '\27[0;31m'
 
 local msgFuncs = {}
 for name, level in next, Levels do
-    local function argumentSwap(logger, msg)
-        if type(logger) == 'string' and msg == nil then
-            return defaultLogger, logger
+    local function resolveArguments(arg1, arg2)
+        if arg1 == Entry then
+            return nil, arg2, arg1
+        elseif type(arg1) == 'string' and arg2 == nil then
+            return defaultLogger, arg1
         end
-        return logger, msg
+        return arg1, arg2
     end
 
     if level ~= Levels.NoLevel then
         msgFuncs[name] = function(logger, msg)
-            local logger, msg = argumentSwap(logger,msg)
+            local logger, msg, entry = resolveArguments(logger,msg)
+            entry = entry or newEntry(logger, {})
 
-            print(newEntry(logger, {
-                Msg = msg,
-                Level = level,
-            }))
+            entry.Msg = msg
+            entry.Level = level
+            print(entry)
         end
 
         msgFuncs[name..'f'] = function(logger, msg, ...)
-            local logger, msg = argumentSwap(logger,msg)
+            local logger, msg = resolveArguments(logger,msg)
 
             print(newEntry(logger, {
                 Msg = msg:format(unpack({...})),
@@ -62,18 +67,13 @@ for name, level in next, Levels do
     end
 end
 
-
--- Custom 'types'
-local Entry  = {"ENTRY"}
-local Logger = {"LOGGER"}
-
 function newLogger()
     return setmetatable(Logger, loggerMetatable)
 end
 
 function newEntry (logger, opts)
     local opts = opts or {}
-    local info = debugInfo(3, "Sl")
+    local info = debugInfo(opts.n or 3, "Sl")
 
     local indexTable = {
             Logger  = logger,
@@ -82,6 +82,14 @@ function newEntry (logger, opts)
             Level   = opts.Level or Levels.NoLevel,
             Msg     = opts.Msg or "",
             LineInf = opts.LineInf or info.short_src .. ":" .. info.currentline,
+
+            Trace   = msgFuncs.Trace,
+            Debug   = msgFuncs.Debug,
+            Info    = msgFuncs.Info,
+            Warn    = msgFuncs.Warn,
+            Warning = msgFuncs.Warning,
+            Error   = msgFuncs.Error,
+            Fatal   = msgFuncs.Fatal,
     }
 
     return setmetatable(Entry, {
@@ -100,6 +108,10 @@ function newEntry (logger, opts)
             end
         end,
     })
+end
+
+function withFields(logger, fields )
+    return newEntry(logger, {n = 2, Fields = fields})
 end
 
 function print(entry)
@@ -136,8 +148,9 @@ loggerMetatable = {
         formatter = formatters.text,
         colors  = true,
 
-        new     = newLogger,
-        
+        new         = newLogger,
+        withFields  = withFields,
+
         Trace   = msgFuncs.Trace,
         Debug   = msgFuncs.Debug,
         Info    = msgFuncs.Info,
