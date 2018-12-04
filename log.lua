@@ -120,13 +120,24 @@ end
 
 formatters = {}
 function formatters.text(entry)
-    return ("%s[%-6s%s]%s %s: %s"):format(
+    local fieldsString = ""
+    for key, value in next, entry.Fields do
+        fieldsString = fieldsString .. string.format("%s%s%s=%s ",
+            entry.Logger.colors and Colors[entry.Level] or "",
+            key,
+            entry.Logger.colors and Colors[Levels.NoLevel] or "",
+            tostring(value)
+        )
+    end
+
+    return ("%s[%-6s%s]%s %s: %-44s %s"):format(
         entry.Logger.colors and Colors[entry.Level] or "",
         entry.Level,
         entry.Time,
         entry.Logger.colors and Colors[Levels.NoLevel] or "",
         entry.LineInf,
-        entry.Msg
+        entry.Msg,
+        fieldsString
     )
 end
 

@@ -14,3 +14,5 @@ log.Trace("colorless")
 
 log.colors = true
 log:withFields({test="test", example=123}):Fatal("test")
+
+log:withFields({test="test", example=123}):Debug("test12312312")
