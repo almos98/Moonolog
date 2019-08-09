@@ -122,20 +122,19 @@ local function getTerminalColumns(offset)
     subtract = subtract or 0
     local handle = io.popen("tput cols")
     local result = handle:read("*a")
-    
+
     handle:close()
     return math.min(tonumber(result) - offset, 99)
 end
 
 formatters = {}
-function formatters.text(entry) 
+function formatters.text(entry)
     local levelColor = Colors[entry.Level]
     local noColor = Colors[Levels.NoLevel]
     local colorCount = 1
 
     local footer = ""
-    if entry.Fields ~= {} then
-        std_print("Field evaluating")
+    if #entry.Fields > 0 then
         for key, value in next, entry.Fields do
             footer = footer .. ("%s%s%s=%s "):format(
                 entry.Logger.colors and levelColor or "",
